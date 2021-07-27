@@ -1,0 +1,4 @@
+main: red.dark.disastia_mc.App
+name: disastia_mc
+version: 0.1
+api-version: 1.17
