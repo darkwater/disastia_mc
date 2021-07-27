@@ -49,17 +49,18 @@ public class DeathListener implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onPlayerDeath(PlayerDeathEvent ev) {
         Player player = ev.getEntity();
+        int deaths = player.getStatistic(Statistic.DEATHS);
 
         Bukkit.getLogger().info("%DEATH " + player.getName() + ":" + ev.getDeathMessage());
         Bukkit.broadcastMessage(ChatColor.RED + ev.getDeathMessage());
-        Bukkit.broadcastMessage(ChatColor.YELLOW + "Deaths: " + player.getStatistic(Statistic.DEATHS) + 1);
+        Bukkit.broadcastMessage(ChatColor.YELLOW + "Deaths: " + (deaths + 1));
         Bukkit.broadcastMessage(ChatColor.YELLOW + "Levels lost: " + player.getLevel());
 
         Bukkit.getBanList(Type.NAME)
             .addBan(
                 player.getName(),
                 "You're still dead.",
-                Date.from(Instant.now().plus(Duration.ofHours(9))),
+                Date.from(Instant.now().plus(Duration.ofHours(9 + deaths * 24))),
                 "disastia mediumcore"
             );
 
