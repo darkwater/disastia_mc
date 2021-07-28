@@ -18,6 +18,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.server.ServerListPingEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.SkullMeta;
@@ -32,6 +33,14 @@ import net.md_5.bungee.api.chat.ItemTag;
 import net.md_5.bungee.api.chat.hover.content.Item;
 
 public class DeathListener implements Listener {
+    @EventHandler(ignoreCancelled = true)
+    public void sendServerMotd(ServerListPingEvent ev) {
+        int bans = Bukkit.getBannedPlayers().size();
+        String suffix = bans == 1 ? " player is dead" : " players are dead";
+
+        ev.setMotd(/*Bukkit.getMotd() + "\n" +*/ bans + suffix);
+    }
+
     @EventHandler(ignoreCancelled = true)
     public void onPlayerJoin(PlayerJoinEvent ev) {
         Player player = ev.getPlayer();
