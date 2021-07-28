@@ -7,6 +7,7 @@ public class App extends JavaPlugin {
     public void onEnable() {
         getLogger().info("Hello, SpigotMC!");
         getServer().getPluginManager().registerEvents(new DeathListener(), this);
+        getServer().getPluginManager().registerEvents(new DoubleDoors(), this);
     }
 
     @Override
