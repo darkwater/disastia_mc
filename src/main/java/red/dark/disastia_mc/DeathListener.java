@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import org.bukkit.BanEntry;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Statistic;
@@ -33,12 +34,22 @@ import net.md_5.bungee.api.chat.ItemTag;
 import net.md_5.bungee.api.chat.hover.content.Item;
 
 public class DeathListener implements Listener {
+    private static final String BAN_SOURCE = "mediumcore death";
+
     @EventHandler(ignoreCancelled = true)
     public void sendServerMotd(ServerListPingEvent ev) {
-        int bans = Bukkit.getBannedPlayers().size();
-        String suffix = bans == 1 ? " player is dead" : " players are dead";
+        ArrayList<String> bans = new ArrayList<String>();
 
-        ev.setMotd(/*Bukkit.getMotd() + "\n" +*/ bans + suffix);
+        for (BanEntry entry : Bukkit.getBanList(Type.NAME).getBanEntries()) {
+            if (entry.getSource().equals(BAN_SOURCE)) {
+                bans.add(entry.getTarget());
+            }
+        }
+
+        String rip = bans.isEmpty() ? "" : "RIP ";
+
+        ev.setMotd(/*Bukkit.getMotd() +*/ ChatColor.DARK_AQUA + "Disastercraft Mediumcore" + "\n"
+                + ChatColor.DARK_RED + rip + String.join(", ", bans));
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -80,7 +91,7 @@ public class DeathListener implements Listener {
                 player.getName(),
                 "You're still dead.",
                 Date.from(Instant.now().plus(Duration.ofHours(9 + deaths * 24))),
-                "disastia mediumcore"
+                BAN_SOURCE
             );
 
         ev.setKeepInventory(true);

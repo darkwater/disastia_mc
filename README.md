@@ -13,5 +13,6 @@ Features
   - Grant absorption for a short time after respawn to mitigate getting
     spawnkilled
   - Broadcast any significant items lost to death
+  - Show dead players in MOTD
   - (TODO) Spectate on death during Ender Dragon fight (then ban after)
 - Automatically open double doors
