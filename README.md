@@ -11,5 +11,5 @@ Features
 - Respawn ignores beds or anchors
 - Grant absorption for a short time after respawn to mitigate getting
   spawnkilled
+- Broadcast any significant items lost to death
 - (TODO) Spectate on death during Ender Dragon fight (then ban after)
-- (TODO) Broadcast any significant items lost to death
