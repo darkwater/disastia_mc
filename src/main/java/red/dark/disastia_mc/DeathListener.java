@@ -48,7 +48,7 @@ public class DeathListener implements Listener {
 
         String rip = bans.isEmpty() ? "" : "RIP ";
 
-        ev.setMotd(/*Bukkit.getMotd() +*/ ChatColor.DARK_AQUA + "Disastercraft Mediumcore" + "\n"
+        ev.setMotd(Bukkit.getMotd() + "\n"
                 + ChatColor.DARK_RED + rip + String.join(", ", bans));
     }
 
