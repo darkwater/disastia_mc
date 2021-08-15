@@ -3,6 +3,7 @@ package red.dark.disastia_mc;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -18,7 +19,9 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerLoginEvent.Result;
 import org.bukkit.event.server.ServerListPingEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
@@ -41,7 +44,7 @@ public class DeathListener implements Listener {
         ArrayList<String> bans = new ArrayList<String>();
 
         for (BanEntry entry : Bukkit.getBanList(Type.NAME).getBanEntries()) {
-            if (entry.getSource().equals(BAN_SOURCE)) {
+            if (entry.getSource().equals(BAN_SOURCE) && entry.getExpiration().toInstant().isAfter(Instant.now())) {
                 bans.add(entry.getTarget());
             }
         }
@@ -50,6 +53,29 @@ public class DeathListener implements Listener {
 
         ev.setMotd(Bukkit.getMotd() + "\n"
                 + ChatColor.DARK_RED + rip + String.join(", ", bans));
+    }
+
+    @EventHandler
+    public void editPlayerBannedMessage(PlayerLoginEvent ev) {
+        if (ev.getResult() != Result.KICK_BANNED)
+            return;
+
+        BanEntry entry = Bukkit.getBanList(Type.NAME).getBanEntry(ev.getPlayer().getUniqueId().toString());
+
+        if (entry == null || entry.getExpiration() == null || !entry.getSource().equals(BAN_SOURCE))
+            return;
+
+        long days = Instant.now().until(entry.getExpiration().toInstant(), ChronoUnit.DAYS) + 1;
+        String respawnIn;
+
+        if (days == 1)
+            respawnIn = "Respawn tomorrow.";
+        else
+            respawnIn = "Respawn in " + days + " days.";
+
+        String reason = entry.getReason() + "\n\n" + ChatColor.GOLD + respawnIn;
+
+        ev.setKickMessage(reason);
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -78,19 +104,22 @@ public class DeathListener implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onPlayerDeath(PlayerDeathEvent ev) {
         Player player = ev.getEntity();
-        int deaths = player.getStatistic(Statistic.DEATHS);
-
+        int deathsBefore = player.getStatistic(Statistic.DEATHS);
+        int deathsAfter = deathsBefore + 1;
+        String ord = ordinalSuffix(deathsAfter);
         Bukkit.getLogger().info("%DEATH " + player.getName() + ":" + ev.getDeathMessage());
         Bukkit.broadcastMessage(ChatColor.RED + ev.getDeathMessage());
-        Bukkit.broadcastMessage(ChatColor.YELLOW + "Deaths: " + (deaths + 1));
+        Bukkit.broadcastMessage(ChatColor.RED + player.getName() + " has died for the " + deathsAfter + ord + " time.");
         Bukkit.broadcastMessage(ChatColor.YELLOW + "Lost: " + player.getLevel() + " levels");
         broadcastLostInventory(player.getInventory());
+
+        String reason = ChatColor.RED + "You are dead.\n" + ChatColor.WHITE + "Deaths: " + deathsAfter;
 
         Bukkit.getBanList(Type.NAME)
             .addBan(
                 player.getName(),
-                "You're still dead.",
-                Date.from(Instant.now().plus(Duration.ofHours(9 + deaths * 24))),
+                reason,
+                Date.from(Instant.now().plus(Duration.ofHours(9 + Math.min(1, deathsBefore) * 24))),
                 BAN_SOURCE
             );
 
@@ -158,6 +187,7 @@ public class DeathListener implements Listener {
 
         BaseComponent[] component = builder.create();
 
+        Bukkit.getLogger().info("Lost: " + item.getType().getKey().toString() + " " + json);
         Bukkit.spigot().broadcast(component);
     }
 
@@ -196,5 +226,19 @@ public class DeathListener implements Listener {
 
         // Return a string representation of the serialized object
         return tagAsJsonObject.toString();
+    }
+
+    private String ordinalSuffix(int n) {
+        switch (n % 100) {
+            case 11:
+            case 12:
+            case 13: return "th";
+            default: switch (n % 10) {
+                case 1:  return "st";
+                case 2:  return "nd";
+                case 3:  return "rd";
+                default: return "th";
+            }
+        }
     }
 }
