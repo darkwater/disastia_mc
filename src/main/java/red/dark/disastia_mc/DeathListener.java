@@ -1,11 +1,13 @@
 package red.dark.disastia_mc;
 
 import java.lang.reflect.Method;
+import java.net.InetAddress;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 
 import org.bukkit.BanEntry;
@@ -39,24 +41,20 @@ import net.md_5.bungee.api.chat.hover.content.Item;
 public class DeathListener implements Listener {
     private static final String BAN_SOURCE = "mediumcore death";
 
+    private HashMap<InetAddress, Instant> unbansByIp = new HashMap<>();
+
     @EventHandler(ignoreCancelled = true)
     public void sendServerMotd(ServerListPingEvent ev) {
-        ArrayList<String> bans = new ArrayList<String>();
+        Instant unbanTime = unbansByIp.get(ev.getAddress());
+        if (unbanTime != null && unbanTime.isAfter(Instant.now())) {
 
-        for (BanEntry entry : Bukkit.getBanList(Type.NAME).getBanEntries()) {
-            if (entry.getSource().equals(BAN_SOURCE) && entry.getExpiration().toInstant().isAfter(Instant.now())) {
-                bans.add(entry.getTarget());
+            ev.setMotd(Bukkit.getMotd() + "\n"
+                    + ChatColor.DARK_RED + respawnInText(unbanTime));
             }
         }
 
-        String rip = bans.isEmpty() ? "" : "RIP ";
-
-        ev.setMotd(Bukkit.getMotd() + "\n"
-                + ChatColor.DARK_RED + rip + String.join(", ", bans));
-    }
-
     @EventHandler
-    public void editPlayerBannedMessage(PlayerLoginEvent ev) {
+    public void onPlayerLogin(PlayerLoginEvent ev) {
         if (ev.getResult() != Result.KICK_BANNED)
             return;
 
@@ -65,17 +63,12 @@ public class DeathListener implements Listener {
         if (entry == null || entry.getExpiration() == null || !entry.getSource().equals(BAN_SOURCE))
             return;
 
-        long days = Instant.now().until(entry.getExpiration().toInstant(), ChronoUnit.DAYS) + 1;
-        String respawnIn;
-
-        if (days == 1)
-            respawnIn = "Respawn tomorrow.";
-        else
-            respawnIn = "Respawn in " + days + " days.";
-
-        String reason = entry.getReason() + "\n\n" + ChatColor.GOLD + respawnIn;
+        Instant unbanInstant = entry.getExpiration().toInstant();
+        String reason = entry.getReason() + "\n\n" + ChatColor.GOLD + respawnInText(unbanInstant);
 
         ev.setKickMessage(reason);
+
+        unbansByIp.put(ev.getAddress(), unbanInstant);
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -113,15 +106,19 @@ public class DeathListener implements Listener {
         Bukkit.broadcastMessage(ChatColor.YELLOW + "Lost: " + player.getLevel() + " levels");
         broadcastLostInventory(player.getInventory());
 
-        String reason = ChatColor.RED + "You are dead.\n" + ChatColor.WHITE + "Deaths: " + deathsAfter;
+        String reason = ChatColor.RED + ev.getDeathMessage() + "\n" + ChatColor.WHITE + "Deaths: " + deathsAfter;
+
+        Instant unbanInstant = Instant.now().plus(Duration.ofHours(12 + Math.min(1, deathsBefore) * 24));
 
         Bukkit.getBanList(Type.NAME)
             .addBan(
                 player.getName(),
                 reason,
-                Date.from(Instant.now().plus(Duration.ofHours(9 + Math.min(1, deathsBefore) * 24))),
+                Date.from(unbanInstant),
                 BAN_SOURCE
             );
+
+        unbansByIp.put(player.getAddress().getAddress(), unbanInstant);
 
         ev.setKeepInventory(true);
         player.getInventory().clear();
@@ -226,6 +223,17 @@ public class DeathListener implements Listener {
 
         // Return a string representation of the serialized object
         return tagAsJsonObject.toString();
+    }
+
+    private String respawnInText(Instant unbanTime) {
+        long hours = Instant.now().until(unbanTime, ChronoUnit.HOURS) + 1;
+
+        if (hours == 1) {
+            long minutes = Instant.now().until(unbanTime, ChronoUnit.MINUTES) + 1;
+            return "Respawn in " + minutes + " minutes.";
+        } else {
+            return "Respawn in " + hours + " hours.";
+        }
     }
 
     private String ordinalSuffix(int n) {
